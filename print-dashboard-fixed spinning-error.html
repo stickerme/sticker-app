@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0f0f0f" />
+<title>Sticker.me — Print Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #222; --border: #2a2a2a;
+    --text: #f0f0f0; --muted: #666; --muted2: #444;
+    --accent: #C8A96E; --accent-dim: rgba(200,169,110,0.12);
+    --success: #4CAF7D; --success-dim: rgba(76,175,125,0.12);
+    --error: #E05555; --error-dim: rgba(224,85,85,0.12);
+    --warn: #E0A855; --warn-dim: rgba(224,168,85,0.12);
+    --printing: #7B6EE0; --printing-dim: rgba(123,110,224,0.12);
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  .header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-size: 15px; font-weight: 600; color: var(--accent); }
+  .event-info { display: flex; flex-direction: column; }
+  .event-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .event-id { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .poll-label { font-size: 12px; color: var(--muted); }
+  .stats { display: flex; gap: 8px; }
+  .stat { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+  .stat span { font-weight: 600; color: var(--text); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 24px; flex-shrink: 0; }
+  .tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-count { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 99px; font-size: 10px; font-weight: 700; margin-left: 6px; background: var(--surface2); color: var(--muted); }
+  .tab.active .tab-count { background: var(--accent-dim); color: var(--accent); }
+
+  /* Queue */
+  .queue { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  /* Empty state */
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 10px; color: var(--muted); }
+  .empty svg { width: 40px; height: 40px; stroke: var(--muted2); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .empty p { font-size: 14px; }
+  .empty small { font-size: 12px; color: var(--muted2); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: opacity 0.3s, transform 0.3s;
+    position: relative;
+  }
+  .card.removing { opacity: 0; transform: scale(0.95); }
+  .card.printing-claimed { opacity: 0.6; }
+
+  .card-thumb {
+    width: 100%;
+    aspect-ratio: 9/16;
+    background: var(--surface2);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-thumb .loading-thumb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .spinner-sm { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+  }
+  .badge-ready { background: var(--success-dim); color: var(--success); border: 1px solid var(--success); }
+  .badge-printing { background: var(--printing-dim); color: var(--printing); border: 1px solid var(--printing); }
+  .badge-failed { background: var(--error-dim); color: var(--error); border: 1px solid var(--error); }
+  .badge-completed { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  .card-body { padding: 14px; }
+  .card-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .card-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .card-error { font-size: 12px; color: var(--error); background: var(--error-dim); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; line-height: 1.4; }
+
+  .card-actions { display: flex; gap: 8px; }
+  .btn { flex: 1; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: background 0.15s, opacity 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+  .btn:hover { background: #2a2a2a; }
+  .btn:active { opacity: 0.7; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .btn-claim { background: var(--printing-dim); color: var(--printing); border-color: var(--printing); }
+  .btn-claim:hover { background: rgba(123,110,224,0.2); }
+  .btn-done { background: var(--success-dim); color: var(--success); border-color: var(--success); }
+  .btn-done:hover { background: rgba(76,175,125,0.2); }
+  .btn-download { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  .btn-download:hover { background: rgba(200,169,110,0.2); }
+
+  /* Claimed overlay */
+  .claimed-overlay { position: absolute; inset: 0; background: rgba(15,15,15,0.7); display: flex; align-items: center; justify-content: center; border-radius: 14px; }
+  .claimed-label { font-size: 13px; font-weight: 600; color: var(--printing); background: var(--printing-dim); border: 1px solid var(--printing); padding: 6px 16px; border-radius: 99px; }
+
+  /* Undo toast */
+  .undo-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); white-space: nowrap; opacity: 0; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .undo-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .undo-btn { background: var(--surface); border: 1px solid var(--border); color: var(--accent); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .undo-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--accent); border-radius: 0 0 12px 12px; width: 100%; transform-origin: left; }
+
+  /* Error state */
+  #eventError { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 40px; gap: 12px; }
+  #eventError h2 { font-size: 20px; }
+  #eventError p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  #eventError code { color: var(--accent); background: var(--surface); padding: 4px 10px; border-radius: 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="eventError" style="display:none;"></div>
+
+<div class="app" id="mainApp" style="display:none;">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">sticker.me</div>
+      <div class="event-info">
+        <div class="event-name" id="eventNameDisplay">—</div>
+        <div class="event-id" id="eventIdDisplay">—</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="stats">
+        <div class="stat">Queue <span id="statQueue">0</span></div>
+        <div class="stat">Done <span id="statDone">0</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="pulse" id="pollPulse"></div>
+        <div class="poll-label" id="pollLabel">Connecting...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('queue')" id="tabQueue">
+      Queue <span class="tab-count" id="countQueue">0</span>
+    </div>
+    <div class="tab" onclick="switchTab('printing')" id="tabPrinting">
+      Printing <span class="tab-count" id="countPrinting">0</span>
+    </div>
+    <div class="tab" onclick="switchTab('failed')" id="tabFailed">
+      Failed <span class="tab-count" id="countFailed">0</span>
+    </div>
+    <div class="tab" onclick="switchTab('completed')" id="tabCompleted">
+      Completed <span class="tab-count" id="countCompleted">0</span>
+    </div>
+  </div>
+
+  <div class="queue" id="queueArea">
+    <div class="cards" id="cardsContainer"></div>
+    <div class="empty" id="emptyState" style="display:none;">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <p id="emptyTitle">Nothing here yet</p>
+      <small id="emptySub">Orders will appear when stickers are ready to print</small>
+    </div>
+  </div>
+</div>
+
+<!-- Undo toast -->
+<div class="undo-toast" id="undoToast">
+  <span>Marked as completed</span>
+  <button class="undo-btn" onclick="undoComplete()">Undo</button>
+  <div class="undo-progress" id="undoProgress"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://oaghbtvdlouwhwjvrdct.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hZ2hidHZkbG91d2h3anZyZGN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTM3MzUsImV4cCI6MjA5NzIyOTczNX0.nKBEsBb6rfa_1TPhl5mCXcxNcH_c_gM5aCsgeIyv_ZM';
+
+let eventId = null;
+let eventData = null;
+let currentTab = 'queue';
+let allOrders = [];
+let undoOrderId = null;
+let undoTimer = null;
+let undoProgressAnim = null;
+let pollInterval = null;
+
+function getEventId() { return new URLSearchParams(window.location.search).get('event'); }
+
+async function init() {
+  eventId = getEventId();
+  if (!eventId) { showError('No event ID', 'Add <code>?event=hueywedding</code> to the URL.'); return; }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/events?event_id=eq.${encodeURIComponent(eventId)}&select=*`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    const data = await res.json();
+    if (!data || data.length === 0) { showError('Event not found', `No event with ID <code>${eventId}</code>.`); return; }
+    eventData = data[0];
+
+    document.getElementById('eventNameDisplay').textContent = eventData.event_name;
+    document.getElementById('eventIdDisplay').textContent = eventData.event_id + ' · ' + (eventData.location || 'arizona');
+    document.getElementById('mainApp').style.display = 'flex';
+
+    await poll();
+    pollInterval = setInterval(poll, 5000);
+  } catch(err) {
+    showError('Connection error', 'Could not reach the database.');
+  }
+}
+
+async function poll() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/orders?event_id=eq.${encodeURIComponent(eventId)}&select=order_id,customer_name,style,status,print_status,generated_image_url,error_notes,created_at,updated_at&order=created_at.desc&limit=200`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    if (!res.ok) throw new Error('Poll failed');
+    allOrders = await res.json();
+    updateUI();
+    document.getElementById('pollLabel').textContent = 'Live · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('pollPulse').style.background = 'var(--success)';
+  } catch(err) {
+    document.getElementById('pollLabel').textContent = 'Connection lost';
+    document.getElementById('pollPulse').style.background = 'var(--error)';
+  }
+}
+
+function getTabOrders(tab) {
+  if (tab === 'queue') return allOrders.filter(o => o.print_status === 'READY_TO_PRINT' || (o.status === 'GENERATED' && o.print_status === 'PENDING'));
+  if (tab === 'printing') return allOrders.filter(o => o.print_status === 'PRINTING');
+  if (tab === 'failed') return allOrders.filter(o => o.status === 'FAILED' || o.print_status === 'FAILED' || (o.error_notes && o.error_notes.length > 0 && o.status !== 'GENERATED'));
+  if (tab === 'completed') return allOrders.filter(o => o.print_status === 'COMPLETED');
+  return [];
+}
+
+function updateUI() {
+  const queueOrders = getTabOrders('queue');
+  const printingOrders = getTabOrders('printing');
+  const failedOrders = getTabOrders('failed');
+  const completedOrders = getTabOrders('completed');
+
+  document.getElementById('countQueue').textContent = queueOrders.length;
+  document.getElementById('countPrinting').textContent = printingOrders.length;
+  document.getElementById('countFailed').textContent = failedOrders.length;
+  document.getElementById('countCompleted').textContent = completedOrders.length;
+  document.getElementById('statQueue').textContent = queueOrders.length + printingOrders.length;
+  document.getElementById('statDone').textContent = completedOrders.length;
+
+  const orders = getTabOrders(currentTab);
+  renderCards(orders);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  updateUI();
+}
+
+// Track card state to avoid unnecessary re-renders
+const cardStateCache = {};
+
+function getCardStateKey(order) {
+  return order.status + '|' + order.print_status + '|' + (order.generated_image_url || '') + '|' + (order.error_notes || '');
+}
+
+function renderCards(orders) {
+  const container = document.getElementById('cardsContainer');
+  const empty = document.getElementById('emptyState');
+
+  if (orders.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'flex';
+    const msgs = {
+      queue: ['Queue is clear', 'Stickers will appear here when ready to print'],
+      printing: ['Nothing being printed', 'Claim a sticker from the queue to start printing'],
+      failed: ['No failures', 'All orders are processing normally'],
+      completed: ['No completed orders yet', 'Completed prints will appear here']
+    };
+    document.getElementById('emptyTitle').textContent = msgs[currentTab][0];
+    document.getElementById('emptySub').textContent = msgs[currentTab][1];
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const existingIds = new Set([...container.querySelectorAll('.card')].map(c => c.dataset.orderId));
+  const newIds = new Set(orders.map(o => o.order_id));
+
+  // Remove cards no longer in this tab
+  existingIds.forEach(id => {
+    if (!newIds.has(id)) {
+      const el = container.querySelector(`[data-order-id="${id}"]`);
+      if (el) el.remove();
+      delete cardStateCache[id];
+    }
+  });
+
+  // Add new cards or update only changed ones
+  orders.forEach((order) => {
+    const stateKey = getCardStateKey(order);
+    let card = container.querySelector(`[data-order-id="${order.order_id}"]`);
+    if (!card) {
+      card = buildCard(order);
+      container.appendChild(card);
+      cardStateCache[order.order_id] = stateKey;
+    } else if (cardStateCache[order.order_id] !== stateKey) {
+      // Only re-render if something actually changed
+      updateCard(card, order);
+      cardStateCache[order.order_id] = stateKey;
+    }
+    // If state unchanged, skip — no flicker
+  });
+}
+
+function buildCard(order) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.orderId = order.order_id;
+  card.innerHTML = cardHTML(order);
+  return card;
+}
+
+function updateCard(card, order) {
+  card.innerHTML = cardHTML(order);
+}
+
+function cardHTML(order) {
+  const time = new Date(order.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const isPrinting = order.print_status === 'PRINTING';
+  const isFailed = order.status === 'FAILED' || order.print_status === 'FAILED';
+  const isCompleted = order.print_status === 'COMPLETED';
+  const isReady = order.print_status === 'READY_TO_PRINT';
+
+  let badgeClass = 'badge-ready';
+  let badgeText = 'Ready';
+  if (isPrinting) { badgeClass = 'badge-printing'; badgeText = 'Printing'; }
+  if (isFailed) { badgeClass = 'badge-failed'; badgeText = 'Failed'; }
+  if (isCompleted) { badgeClass = 'badge-completed'; badgeText = 'Completed'; }
+
+  const thumbHTML = order.generated_image_url && !isFailed
+    ? `<img src="${order.generated_image_url}" alt="Sticker for ${order.customer_name}" loading="lazy" />`
+    : isFailed ? `<div class="loading-thumb" style="flex-direction:column;gap:8px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style="font-size:11px;color:var(--muted2);">No image</span></div>` : `<div class="loading-thumb"><div class="spinner-sm"></div></div>`;
+
+  const errorHTML = isFailed && order.error_notes
+    ? `<div class="card-error">${order.error_notes}</div>`
+    : '';
+
+  let actionsHTML = '';
+  if (isReady) {
+    actionsHTML = `
+      <button class="btn btn-claim" onclick="claimOrder('${order.order_id}')">
+        <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        Print this
+      </button>
+      <a class="btn btn-download" href="${order.generated_image_url}" download="${order.order_id}.png" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>`;
+  } else if (isPrinting) {
+    actionsHTML = `
+      <button class="btn btn-done" onclick="completeOrder('${order.order_id}')">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark done
+      </button>
+      <a class="btn btn-download" href="${order.generated_image_url}" download="${order.order_id}.png" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>`;
+  } else if (isFailed) {
+    actionsHTML = `
+      <button class="btn" onclick="dismissFailed('${order.order_id}')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Dismiss
+      </button>`;
+  } else if (isCompleted) {
+    actionsHTML = `
+      <a class="btn btn-download" href="${order.generated_image_url}" download="${order.order_id}.png" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Reprint
+      </a>`;
+  }
+
+  return `
+    <div class="card-thumb">
+      ${thumbHTML}
+      <div class="status-badge ${badgeClass}">${badgeText}</div>
+    </div>
+    <div class="card-body">
+      <div class="card-name">${order.customer_name}</div>
+      <div class="card-meta">${order.style || '—'} · ${time} · ${order.order_id}</div>
+      ${errorHTML}
+      <div class="card-actions">${actionsHTML}</div>
+    </div>`;
+}
+
+async function claimOrder(orderId) {
+  await patchOrder(orderId, { print_status: 'PRINTING' });
+  await poll();
+}
+
+async function completeOrder(orderId) {
+  undoOrderId = orderId;
+
+  // Optimistically remove card
+  const card = document.querySelector(`[data-order-id="${orderId}"]`);
+  if (card) { card.classList.add('removing'); setTimeout(() => card.remove(), 300); }
+
+  await patchOrder(orderId, { print_status: 'COMPLETED' });
+
+  // Show undo toast
+  showUndoToast();
+  await poll();
+}
+
+async function undoComplete() {
+  if (!undoOrderId) return;
+  clearTimeout(undoTimer);
+  cancelAnimationFrame(undoProgressAnim);
+  hideUndoToast();
+  await patchOrder(undoOrderId, { print_status: 'READY_TO_PRINT' });
+  undoOrderId = null;
+  await poll();
+}
+
+async function dismissFailed(orderId) {
+  await patchOrder(orderId, { status: 'DISMISSED', print_status: 'DISMISSED' });
+  await poll();
+}
+
+async function patchOrder(orderId, fields) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/orders?order_id=eq.${encodeURIComponent(orderId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() })
+    });
+  } catch(err) {
+    console.error('Patch failed:', err);
+  }
+}
+
+function showUndoToast() {
+  const toast = document.getElementById('undoToast');
+  const bar = document.getElementById('undoProgress');
+  toast.classList.add('show');
+  bar.style.transition = 'none';
+  bar.style.transform = 'scaleX(1)';
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = 'transform 5s linear';
+      bar.style.transform = 'scaleX(0)';
+    });
+  });
+
+  undoTimer = setTimeout(() => {
+    hideUndoToast();
+    undoOrderId = null;
+  }, 5000);
+}
+
+function hideUndoToast() {
+  document.getElementById('undoToast').classList.remove('show');
+}
+
+function showError(title, msg) {
+  const el = document.getElementById('eventError');
+  el.style.display = 'flex';
+  el.innerHTML = `<h2>${title}</h2><p>${msg}</p>`;
+}
+
+init();
+</script>
+</body>
+</html>
