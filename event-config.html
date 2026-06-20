@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sticker.me — Event Config</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F3; --surface: #fff; --border: #E8E6E1; --border2: #D0CEC9;
+    --text: #1a1a1a; --muted: #888; --muted2: #bbb;
+    --accent: #C8A96E; --accent-dim: rgba(200,169,110,0.12);
+    --success: #4CAF7D; --success-dim: rgba(76,175,125,0.12);
+    --error: #E05555; --error-dim: rgba(224,85,85,0.12);
+    --warn: #E0A855; --warn-dim: rgba(224,168,85,0.12);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Login */
+  #loginScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; width: 100%; max-width: 380px; text-align: center; }
+  .login-card .logo { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .login-card p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  /* App */
+  #app { display: none; max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .header .logo { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; align-items: start; }
+  @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.25rem; }
+
+  /* Form */
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  input[type="text"], input[type="password"], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border2); border-radius: 9px;
+    font-size: 14px; font-family: inherit; color: var(--text); background: #FAFAF9;
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+  input::placeholder, textarea::placeholder { color: var(--muted2); }
+  .field-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* File upload */
+  .upload-area { border: 2px dashed var(--border2); border-radius: 9px; padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
+  .upload-area:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .upload-area.has-file { border-color: var(--accent); border-style: solid; background: var(--accent-dim); }
+  .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-area p { font-size: 13px; color: var(--muted); }
+  .upload-area strong { font-size: 13px; color: var(--accent); }
+  .upload-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin: 0 auto 8px; display: block; }
+
+  /* Buttons */
+  .btn { padding: 10px 18px; border-radius: 9px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; justify-content: center; padding: 12px; }
+  .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--muted); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-danger { background: var(--error-dim); color: var(--error); border: 1px solid var(--error); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 100; max-width: 360px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--success-dim); border: 1px solid var(--success); color: var(--success); }
+  .toast.error { background: var(--error-dim); border: 1px solid var(--error); color: var(--error); }
+
+  /* Events list */
+  .event-list { display: flex; flex-direction: column; gap: 12px; }
+  .event-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--surface); }
+  .event-card.inactive { opacity: 0.5; }
+  .event-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .event-name { font-size: 15px; font-weight: 600; }
+  .event-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .event-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .badge-wedding { background: #FFF0F5; color: #C2185B; }
+  .badge-birthday { background: #FFF8E1; color: #F57F17; }
+  .badge-graduation { background: #E8F5E9; color: #2E7D32; }
+  .badge-event { background: #E3F2FD; color: #1565C0; }
+  .badge-active { background: var(--success-dim); color: var(--success); }
+  .badge-inactive { background: #F5F5F5; color: var(--muted); }
+  .event-urls { margin-top: 10px; background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+  .url-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .url-row:last-child { margin-bottom: 0; }
+  .url-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; width: 50px; flex-shrink: 0; }
+  .url-text { font-size: 11px; color: var(--text); font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .copy-btn { font-size: 10px; font-weight: 600; color: var(--accent); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+  .copy-btn:hover { background: var(--accent-dim); }
+  .event-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* Toggle */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+  .toggle { width: 40px; height: 22px; background: var(--border2); border-radius: 99px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--success); }
+  .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle.on::after { left: 21px; }
+  .toggle-label { font-size: 13px; color: var(--text); }
+
+  /* Loading */
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="logo">sticker.me</div>
+    <p>Event Config — Admin Access</p>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()" />
+    </div>
+    <button class="btn btn-primary" onclick="login()">Sign in</button>
+    <p style="margin-top:12px;font-size:11px;color:var(--muted2);" id="loginError"></p>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="header">
+    <div>
+      <div class="logo">sticker.me</div>
+      <p>Event Configuration</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+  </div>
+
+  <div class="layout">
+
+    <!-- Create Event Form -->
+    <div class="card">
+      <h2 id="formTitle">Create New Event</h2>
+
+      <div class="field">
+        <label>Event Name <span style="color:var(--error);">*</span></label>
+        <input type="text" id="eventName" placeholder="e.g. Huey + Will Wedding" />
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Event ID <span style="color:var(--error);">*</span></label>
+          <input type="text" id="eventId" placeholder="e.g. hueywedding" />
+          <div class="field-hint">Lowercase, no spaces. Used in URLs.</div>
+        </div>
+        <div class="field">
+          <label>Event Type <span style="color:var(--error);">*</span></label>
+          <select id="eventType">
+            <option value="wedding">Wedding</option>
+            <option value="birthday">Birthday</option>
+            <option value="graduation">Graduation</option>
+            <option value="event">Event / Corporate</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Location <span style="color:var(--error);">*</span></label>
+          <input type="text" id="location" placeholder="e.g. arizona" />
+          <div class="field-hint">Lowercase. Used for storage folders.</div>
+        </div>
+        <div class="field">
+          <label>Default Style</label>
+          <select id="style">
+            <option value="Ghibli">Ghibli</option>
+            <option value="Anime">Anime</option>
+            <option value="Funny">Funny</option>
+            <option value="Elegant">Elegant</option>
+            <option value="Cute">Cute</option>
+            <option value="Premium Portrait">Premium Portrait</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="assetLabel">Asset Photo</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="assetFile" accept="image/*" onchange="handleAssetFile(this)" />
+          <img id="assetPreview" class="upload-preview" style="display:none;" alt="Asset preview" />
+          <p id="uploadText">
+            <strong>Click to upload</strong> or drag and drop<br>
+            <span style="font-size:11px;">Bride/groom, birthday person, graduate, or logo</span>
+          </p>
+        </div>
+        <div class="field-hint" id="assetHint">Optional. Used for the reference photo in solo mode.</div>
+      <div class="field" id="assetTypeField" style="margin-top:10px;display:none;">
+        <label>Asset Type</label>
+        <select id="assetType">
+          <option value="person">Person (couple, birthday person, graduate)</option>
+          <option value="logo">Logo / Product / Object</option>
+        </select>
+        <div class="field-hint">Tells the AI how to use the asset photo.</div>
+      </div>
+        <div style="margin-top:8px;" id="existingAssetWrap" style="display:none;">
+          <div class="field-hint">Current: <a id="existingAssetLink" href="#" target="_blank" style="color:var(--accent);">view current asset</a> · <button onclick="clearAsset()" style="background:none;border:none;color:var(--error);font-size:11px;cursor:pointer;padding:0;">remove</button></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-wrap">
+          <div class="toggle on" id="activeToggle" onclick="toggleActive()"></div>
+          <span class="toggle-label" id="activeLabel">Active — operators can use this event</span>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <button class="btn btn-primary" id="submitBtn" onclick="submitEvent()">
+        <span id="submitLabel">Create event</span>
+      </button>
+      <button class="btn btn-ghost" id="cancelEditBtn" onclick="cancelEdit()" style="display:none;width:100%;justify-content:center;margin-top:8px;">Cancel edit</button>
+    </div>
+
+    <!-- Events List -->
+    <div class="card">
+      <h2>All Events <span style="font-weight:400;text-transform:none;letter-spacing:0;" id="eventCount"></span></h2>
+      <div class="event-list" id="eventList">
+        <div class="loading-state">Loading events...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://oaghbtvdlouwhwjvrdct.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hZ2hidHZkbG91d2h3anZyZGN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTM3MzUsImV4cCI6MjA5NzIyOTczNX0.nKBEsBb6rfa_1TPhl5mCXcxNcH_c_gM5aCsgeIyv_ZM';
+const ADMIN_PASSWORD = 'stickerme2026';
+const BASE_URL = 'https://stickerme.github.io/sticker-app';
+
+let isActive = true;
+let editingEventId = null;
+let selectedAssetFile = null;
+let existingAssetUrl = null;
+
+// Auth
+function login() {
+  const pw = document.getElementById('loginPassword').value;
+  if (pw === ADMIN_PASSWORD) {
+    sessionStorage.setItem('sm_admin', '1');
+    showApp();
+  } else {
+    document.getElementById('loginError').textContent = 'Incorrect password.';
+  }
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadEvents();
+}
+
+function logout() {
+  sessionStorage.removeItem('sm_admin');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginPassword').value = '';
+}
+
+// Auto-login if session active
+if (sessionStorage.getItem('sm_admin') === '1') {
+  showApp();
+}
+
+function toggleActive() {
+  isActive = !isActive;
+  const toggle = document.getElementById('activeToggle');
+  const label = document.getElementById('activeLabel');
+  toggle.classList.toggle('on', isActive);
+  label.textContent = isActive ? 'Active — operators can use this event' : 'Inactive — event is disabled';
+}
+
+// Auto-generate event ID from name
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('eventName').addEventListener('input', function() {
+    if (!editingEventId) {
+      const id = this.value.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '')
+        .substring(0, 30);
+      document.getElementById('eventId').value = id;
+    }
+  });
+
+  document.getElementById('eventType').addEventListener('change', updateAssetLabel);
+});
+
+function updateAssetLabel() {
+  const type = document.getElementById('eventType').value;
+  const labels = {
+    wedding: 'Asset Photo — Bride & Groom',
+    birthday: 'Asset Photo — Birthday Person',
+    graduation: 'Asset Photo — Graduate',
+    event: 'Asset Photo — Logo or Product'
+  };
+  document.getElementById('assetLabel').textContent = labels[type] || 'Asset Photo';
+}
+
+function handleAssetFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  selectedAssetFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('assetPreview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    document.getElementById('uploadText').style.display = 'none';
+    document.getElementById('uploadArea').classList.add('has-file');
+    document.getElementById('assetTypeField').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function clearAsset() {
+  existingAssetUrl = null;
+  document.getElementById('existingAssetWrap').style.display = 'none';
+  document.getElementById('assetTypeField').style.display = 'none';
+  document.getElementById('assetType').value = 'person';
+}
+
+async function uploadAssetToSupabase(file, eventId, location) {
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const path = `${location}/${eventId}/asset.${ext}`;
+
+  // Read file as ArrayBuffer first to ensure complete read before upload
+  const arrayBuffer = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sticker-images/${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'apikey': SUPABASE_KEY,
+      'Content-Type': file.type,
+      'x-upsert': 'true'
+    },
+    body: arrayBuffer
+  });
+  if (!res.ok) throw new Error('Asset upload failed: ' + await res.text());
+  return `${SUPABASE_URL}/storage/v1/object/public/sticker-images/${path}`;
+}
+
+async function submitEvent() {
+  const name = document.getElementById('eventName').value.trim();
+  const id = document.getElementById('eventId').value.trim().toLowerCase().replace(/\s/g, '');
+  const type = document.getElementById('eventType').value;
+  const location = document.getElementById('location').value.trim().toLowerCase();
+  const style = document.getElementById('style').value;
+
+  if (!name || !id || !location) {
+    showToast('error', 'Event name, ID, and location are required.');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    // Upload asset if selected
+    let assetUrl = existingAssetUrl || null;
+    if (selectedAssetFile) {
+      assetUrl = await uploadAssetToSupabase(selectedAssetFile, id, location);
+    }
+
+    const assetType = document.getElementById('assetType').value;
+    const payload = {
+      event_id: id,
+      event_name: name,
+      event_type: type,
+      active: isActive,
+      style,
+      location,
+      bride_groom_image_url: assetUrl,
+      asset_type: (assetUrl || existingAssetUrl) ? assetType : null
+    };
+
+    let res;
+    if (editingEventId) {
+      res = await fetch(`${SUPABASE_URL}/rest/v1/events?event_id=eq.${encodeURIComponent(editingEventId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'apikey': SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`${SUPABASE_URL}/rest/v1/events`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'apikey': SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (!res.ok) throw new Error(await res.text());
+
+    showToast('success', editingEventId ? `Updated ${name}` : `Created ${name}`);
+    resetForm();
+    loadEvents();
+
+  } catch(err) {
+    showToast('error', err.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = editingEventId ? 'Save changes' : 'Create event';
+}
+
+function resetForm() {
+  editingEventId = null;
+  selectedAssetFile = null;
+  existingAssetUrl = null;
+  document.getElementById('eventName').value = '';
+  document.getElementById('eventId').value = '';
+  document.getElementById('eventId').disabled = false;
+  document.getElementById('location').value = '';
+  document.getElementById('eventType').value = 'wedding';
+  document.getElementById('style').value = 'Ghibli';
+  document.getElementById('assetPreview').style.display = 'none';
+  document.getElementById('uploadText').style.display = 'block';
+  document.getElementById('uploadArea').classList.remove('has-file');
+  document.getElementById('existingAssetWrap').style.display = 'none';
+  document.getElementById('assetTypeField').style.display = 'none';
+  document.getElementById('assetType').value = 'person';
+  document.getElementById('formTitle').textContent = 'Create New Event';
+  document.getElementById('submitLabel').textContent = 'Create event';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  isActive = true;
+  document.getElementById('activeToggle').classList.add('on');
+  document.getElementById('activeLabel').textContent = 'Active — operators can use this event';
+  updateAssetLabel();
+}
+
+function cancelEdit() { resetForm(); }
+
+function editEvent(event) {
+  editingEventId = event.event_id;
+  existingAssetUrl = event.bride_groom_image_url || null;
+  document.getElementById('eventName').value = event.event_name;
+  document.getElementById('eventId').value = event.event_id;
+  document.getElementById('eventId').disabled = true;
+  document.getElementById('eventType').value = event.event_type || 'wedding';
+  document.getElementById('location').value = event.location || '';
+  document.getElementById('style').value = event.style || 'Ghibli';
+  isActive = event.active;
+  document.getElementById('activeToggle').classList.toggle('on', isActive);
+  document.getElementById('activeLabel').textContent = isActive
+    ? 'Active — operators can use this event'
+    : 'Inactive — event is disabled';
+
+  if (existingAssetUrl) {
+    document.getElementById('existingAssetWrap').style.display = 'block';
+    document.getElementById('existingAssetLink').href = existingAssetUrl;
+    document.getElementById('assetTypeField').style.display = 'block';
+    document.getElementById('assetType').value = event.asset_type || 'person';
+  }
+
+  document.getElementById('formTitle').textContent = 'Edit Event';
+  document.getElementById('submitLabel').textContent = 'Save changes';
+  document.getElementById('cancelEditBtn').style.display = 'block';
+  updateAssetLabel();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function toggleEventActive(eventId, currentActive) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/events?event_id=eq.${encodeURIComponent(eventId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ active: !currentActive })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    showToast('success', !currentActive ? `${eventId} activated` : `${eventId} deactivated`);
+    loadEvents();
+  } catch(err) {
+    showToast('error', err.message);
+  }
+}
+
+async function loadEvents() {
+  const list = document.getElementById('eventList');
+  list.innerHTML = '<div class="loading-state">Loading...</div>';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=created_at.desc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    const events = await res.json();
+    document.getElementById('eventCount').textContent = `(${events.length})`;
+
+    if (!events.length) {
+      list.innerHTML = '<div class="loading-state">No events yet. Create one!</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    events.forEach(ev => {
+      const card = document.createElement('div');
+      card.className = 'event-card' + (ev.active ? '' : ' inactive');
+
+      const typeColors = { wedding: 'badge-wedding', birthday: 'badge-birthday', graduation: 'badge-graduation', event: 'badge-event' };
+      const typeColor = typeColors[ev.event_type] || 'badge-event';
+
+      const pwaUrl = `${BASE_URL}/operator-pwa.html?event=${ev.event_id}`;
+      const dashUrl = `${BASE_URL}/print-dashboard.html?event=${ev.event_id}`;
+
+      const assetTypeLabel = ev.asset_type ? ` · asset: ${ev.asset_type}` : '';
+      card.innerHTML = `
+        <div class="event-top">
+          <div>
+            <div class="event-name">${ev.event_name}</div>
+            <div class="event-meta">${ev.event_id} · ${ev.location || '—'} · ${ev.style || 'Ghibli'}${assetTypeLabel}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <span class="badge ${typeColor}">${ev.event_type || 'event'}</span>
+            <span class="badge ${ev.active ? 'badge-active' : 'badge-inactive'}">${ev.active ? 'Active' : 'Inactive'}</span>
+          </div>
+        </div>
+        <div class="event-urls">
+          <div class="url-row">
+            <span class="url-label">PWA</span>
+            <span class="url-text">${pwaUrl}</span>
+            <button class="copy-btn" onclick="copyUrl('${pwaUrl}', this)">Copy</button>
+          </div>
+          <div class="url-row">
+            <span class="url-label">Print</span>
+            <span class="url-text">${dashUrl}</span>
+            <button class="copy-btn" onclick="copyUrl('${dashUrl}', this)">Copy</button>
+          </div>
+        </div>
+        <div class="event-actions">
+          <button class="btn btn-sm btn-ghost" onclick='editEvent(${JSON.stringify(ev).replace(/'/g, "&#39;")})'>Edit</button>
+          <button class="btn btn-sm ${ev.active ? 'btn-danger' : 'btn-ghost'}" onclick="toggleEventActive('${ev.event_id}', ${ev.active})">
+            ${ev.active ? 'Deactivate' : 'Activate'}
+          </button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  } catch(err) {
+    list.innerHTML = `<div class="loading-state" style="color:var(--error)">Error: ${err.message}</div>`;
+  }
+}
+
+async function copyUrl(url, btn) {
+  await navigator.clipboard.writeText(url);
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 2000);
+}
+
+let toastTimer;
+function showToast(type, msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+updateAssetLabel();
+</script>
+</body>
+</html>
